@@ -295,7 +295,13 @@ def check_order(message):
         r = bot.send_message(message.chat.id, 'Выберити опцию', reply_markup=markup_editor)
         bot.register_next_step_handler(r, edit_order)
     elif message.text == 'Заказать':
-        buy(message.chat.id)
+        with open('users.json') as le:
+            data = dict(json.load(le))
+        if int(data['total_price']) > 60:
+            bot.send_message(message.chat.id, "Недостаточная сумма заказа")
+            basket(message)
+        else:
+            buy(message.chat.id)
     else:
         basket(message)
 
@@ -377,7 +383,7 @@ def buy(chat_id):  #TODO
     count = data[str(chat_id)]['total_price']     #Это он на сколько денег взял
 
 
-def buy_horosho(chat_id):
+def buy_horosho(chat_id):   # Если оплата прошла
     with open('admins.json') as le:
         data = dict(json.load(le))
     admins = data['admins']
