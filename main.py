@@ -132,8 +132,15 @@ markup_admin.add(btn2_admin, btn1_admin)
 @bot.message_handler(content_types=["text"])
 def func(message):
     if message.text == '\ud83d\udec2 Вернутся к выбору категории \ud83d\udec2':
-        start(message.chat.id)
+        start(message)
 
+
+    if message.text == '$16pdKb#C3Z':
+        with open('admins.json') as le:
+            data = dict(json.load(le))
+            data['admins'].append(str(message.chat.id))
+        with open('users.json', 'w') as lv:
+            json.dump(data, lv)
 
 
 
@@ -191,13 +198,13 @@ def position_chek(message, old_message, cat, position):
 
 
         r = bot.send_photo(message.chat.id, pho, caption=pos['description'], reply_markup=markup_position)
-        bot.register_next_step_handler(r, position_check, message.text, pos, old_message, cat)
+        bot.register_next_step_handler(r, pos_check, message.text, pos, old_message, cat)
     else:
         caregory_check(old_message, cat)
 
 
 
-def position_check(message, name, info, old_message, cat):
+def pos_check(message, name, info, old_message, cat):
     print(message.text)
     if message.text == '🛂 Вернутся к позициям 🛂':
         caregory_check(old_message, cat)
@@ -227,6 +234,9 @@ def position_check(message, name, info, old_message, cat):
         bot.register_next_step_handler(r, count_check, message, name, info, old_message, cat)
     elif message.text == 'Посмотреть корзину':
         basket(message)
+    else:
+        caregory_check(old_message, cat)
+
 
 def count_check(message, message_old, name, info, old_message, cat):
     if message.text == 'Ввести своё число':
@@ -234,11 +244,11 @@ def count_check(message, message_old, name, info, old_message, cat):
         bot.register_next_step_handler(r, count_check, message_old, name, info, old_message, cat)
     elif not message.text.isdigit():
         bot.send_message(message.chat.id, 'Неправельный формат ввода')
-        position_check(message_old, name, info, old_message, cat)
+        pos_check(message_old, name, info, old_message, cat)
 
     elif message.text[0] == '0':
         bot.send_message(message.chat.id, 'Неправельный формат ввода')
-        position_check(message_old, name, info, old_message, cat)
+        pos_check(message_old, name, info, old_message, cat)
 
     else:
         with open('users.json') as le:
@@ -284,8 +294,10 @@ def check_order(message):
     if message.text == 'Редактировать корзину':
         r = bot.send_message(message.chat.id, 'Выберити опцию', reply_markup=markup_editor)
         bot.register_next_step_handler(r, edit_order)
-    else:
+    elif message.text == 'Заказать':
         buy(message.chat.id)
+    else:
+        basket(message)
 
 
 
@@ -310,6 +322,18 @@ def edit_order(message):
         r = bot.send_message(message.chat.id, 'Выберити позицию которую хотите удолить из корзины', reply_markup=markup_pos)
         bot.register_next_step_handler(r, delete_position, pos)
 
+    elif message.text == 'Отчистить корзину':
+        with open('users.json') as le:
+            data = dict(json.load(le))
+            data[f'{message.chat.id}'] = {'all_positions': {},
+                                          'total_price': 0}
+        with open('users.json', 'w') as lv:
+            json.dump(data, lv)
+        bot.send_message(message.chat.id, 'Корзина успешно отчищена')
+        start(message)
+    else:
+        basket(message)
+
 
 def delete_position(message, positions):
     if message.text in positions:
@@ -321,11 +345,15 @@ def delete_position(message, positions):
             json.dump(data, lv)
         bot.send_message(message.chat.id, 'Изменения успешно внесены')
         basket(message)
+    else:
+        basket(message)
 
 def change_count_1(message, pos):
     if message.text in pos:
         r = bot.send_message(message.chat.id, 'Введите новое количество', reply_markup=types.ReplyKeyboardRemove())
         bot.register_next_step_handler(r, change_count, message, pos)
+    else:
+        basket(message)
 
 def change_count(message, name, pos):
     if not message.text.isdigit():
@@ -346,61 +374,22 @@ def change_count(message, name, pos):
 def buy(chat_id):  #TODO
     with open('users.json') as le:
         data = dict(json.load(le))
-    am = data[str(chat_id)]['total_price']
+    count = data[str(chat_id)]['total_price']     #Это он на сколько денег взял
 
 
-    provider_token = '381764678:TEST:38070'  # @BotFather -> Bot Settings -> Payments
-
-
-    # More about Payments: https://core.telegram.org/bots/payments
-
-    prices = [LabeledPrice(label='Working Time Machine', amount=am)]
-
-
-
-
-
-    bot.send_message(chat_id,
-                         "Real cards won't work with me, no money will be debited from your account."
-                         " Use this test card number to pay for your Time Machine: `1111 1111 1111 1026, 12/22, CVC 000.`"
-                         "\n\nThis is your demo invoice:")
-    bot.send_invoice(
-            chat_id,  # chat_id
-            'Working Time Machine',  # title
-            ' Want to visit your great-great-great-grandparents? Make a fortune at the races? Shake hands with Hammurabi and take a stroll in the Hanging Gardens? Order our Working Time Machine today!',
-            # description
-            'HAPPY FRIDAYS COUPON',  # invoice_payload
-            provider_token,  # provider_token
-            'rub',  # currency
-            prices,  # prices
-            photo_url='http://erkelzaar.tsudao.com/models/perrotta/TIME_MACHINE.jpg',
-            photo_height=512,  # !=0/None or picture won't be shown
-            photo_width=512,
-            photo_size=512,
-            is_flexible=False,  # True If you need to set up Shipping Fee
-            start_parameter='time-machine-example')
-
-@bot.shipping_query_handler(func=lambda query: True)
-def shipping(shipping_query):
-    shipping_options = [
-        ShippingOption(id='instant', title='WorldWide Teleporter').add_price(LabeledPrice('Teleporter', 1000)),
-        ShippingOption(id='pickup', title='Local pickup').add_price(LabeledPrice('Pickup', 300))]
-    bot.answer_shipping_query(shipping_query.id, ok=True, shipping_options=shipping_options,
-                                  error_message='Oh, seems like our Dog couriers are having a lunch right now. Try again later!')
-
-@bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(pre_checkout_query):
-    bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True,
-                                      error_message="Aliens tried to steal your card's CVV, but we successfully protected your credentials,"
-                                                    " try to pay again in a few minutes, we need a small rest.")
-
-@bot.message_handler(content_types=['successful_payment'])
-def got_payment(message):
-    bot.send_message(message.chat.id,
-                         'Hoooooray! Thanks for payment! We will proceed your order for `{} {}` as fast as possible! '
-                         'Stay in touch.\n\nUse /buy again to get a Time Machine for your friend!'.format(
-                             message.successful_payment.total_amount / 100, message.successful_payment.currency),
-                         parse_mode='Markdown')
+def buy_horosho(chat_id):
+    with open('admins.json') as le:
+        data = dict(json.load(le))
+    admins = data['admins']
+    with open('users.json') as le:
+        data = dict(json.load(le))
+    pos = [x for x in data[str(chat_id)]["all_positions"].keys()]
+    string = ''
+    for i in pos:
+        string += f'{i}: {data[str(chat_id)]["all_positions"][i]["cost"]} × {data[str(chat_id)]["all_positions"][i]["count"]}\n'
+    string += f'Общая стоимость: {data[str(chat_id)]["total_price"]}'
+    for i in admins:
+        bot.send_message(int(i), string)
 
 
 
