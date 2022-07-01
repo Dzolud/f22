@@ -1,49 +1,15 @@
 import requests
 import telebot
 from telebot import types
-from telebot.types import LabeledPrice, ShippingOption
-from telebot.types import InputMediaPhoto, InputMediaVideo
-import re
 import json
 import base64
 from binascii import a2b_base64
-import urllib
-from gh import dororroo
 
 
 chat_id = []
 
 
 bot = telebot.TeleBot('5340148482:AAFT4YjSp9Ak-NICmbnLQ_SvsYW8wijqm_I')
-
-
-
-
-
-
-encoded = base64.b64encode(open("jfssflss.jpg", "rb").read())
-encoded = str(encoded)
-
-
-
-
-encoded = bytes(encoded, encoding="raw_unicode_escape")
-encoded = encoded[2:-1]
-
-binary_data = a2b_base64(encoded)
-
-fd = open('vid.mp4', 'wb')
-fd.write(binary_data)
-
-fd.close()
-
-
-
-
-
-
-
-
 
 
 
@@ -297,11 +263,11 @@ def check_order(message):
     elif message.text == 'Заказать':
         with open('users.json') as le:
             data = dict(json.load(le))
-        if int(data['total_price']) > 60:
+        if int(data[str(message.chat.id)]['total_price']) < 65:
             bot.send_message(message.chat.id, "Недостаточная сумма заказа")
             basket(message)
         else:
-            buy(message.chat.id)
+            delivery(message)
     else:
         basket(message)
 
@@ -375,6 +341,79 @@ def change_count(message, name, pos):
             json.dump(data, lv)
         bot.send_message(message.chat.id, 'Изменения успешно внесены')
         basket(message)
+
+
+markup_deliviry = types.ReplyKeyboardMarkup(resize_keyboard=True)
+markup_deliviry.add(types.KeyboardButton('Самовывоз'))
+markup_deliviry.add(types.KeyboardButton('Доставка'))
+
+
+def delivery(message):
+    with open('users.json') as le:
+        data = dict(json.load(le))
+    res = requests.get('/api/get_porog').json()['porog']
+    if int(data[str(message.chat.id)]['total_price']) >= int(res):
+        bot.send_message(message.chat.id, 'Так как сумма вашего заказа больше пороговой, доставка будет бесплатной')
+        buy(message.chat.id)
+    else:
+        r = bot.send_message(message.chat.id, 'Выберити способ доставки', reply_markup=markup_deliviry)
+        bot.register_next_step_handler(r, change_count)
+
+
+def dostavka(message):
+    if message.text == 'Самовывоз':
+        res = requests.get('/api/get_samdelivery').json()['samdelivery']
+        bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
+        with open('users.json') as le:
+            data = dict(json.load(le))
+        data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
+                                                             'count': 1}
+        data[f'{message.chat.id}']['total_price'] += int(res)
+
+        pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
+        string = ''
+        for i in pos:
+            string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
+        string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
+        bot.send_message(message.chat.id, string)
+        invalid_dostavka(message)
+    elif message.text == 'Доставка':
+        res = requests.get('/api/get_delivery').json()['delivery']
+        bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
+        with open('users.json') as le:
+            data = dict(json.load(le))
+        data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
+                                                                   'count': 1}
+        data[f'{message.chat.id}']['total_price'] += int(res)
+
+        pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
+        string = ''
+        for i in pos:
+            string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
+        string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
+        bot.send_message(message.chat.id, string)
+        invalid_dostavka(message)
+
+    else:
+        basket(message)
+
+
+markup_invalid = types.ReplyKeyboardMarkup(resize_keyboard=True)
+markup_invalid.add(types.KeyboardButton('Заказать'))
+markup_invalid.add(types.KeyboardButton('Радактировать'))
+
+
+def invalid_dostavka(message):
+    r = bot.send_message(message.chat.id, 'Привет', reply_markup=markup_invalid)
+    bot.register_next_step_handler(r, super_invalid)
+
+
+def super_invalid(message):
+    if message.text == 'Заказать':
+        buy(message.chat.id)
+    else:
+        basket(message)
+
 
 
 def buy(chat_id):  #TODO
