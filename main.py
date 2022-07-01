@@ -339,55 +339,72 @@ def delivery(message):
         data = dict(json.load(le))
     res = requests.get('/api/get_porog').json()['porog']
     if int(data[str(message.chat.id)]['total_price']) >= int(res):
-        bot.send_message(message.chat.id, 'Так как сумма вашего заказа больше пороговой, доставка будет бесплатной')
-        buy(message.chat.id)
+        r = bot.send_message(message.chat.id, 'Так как сумма вашего заказа больше пороговой, доставка будет бесплатной. Выберити способ доставки', reply_markup=markup_deliviry)
+        bot.register_next_step_handler(r, change_count, True)
     else:
         r = bot.send_message(message.chat.id, 'Выберити способ доставки', reply_markup=markup_deliviry)
-        bot.register_next_step_handler(r, change_count)
+        bot.register_next_step_handler(r, change_count, False)
 
 
-def dostavka(message):
-    if message.text == 'Самовывоз':
-        res = requests.get('/api/get_samdelivery').json()['samdelivery']
-        bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
-        with open('users.json') as le:
-            data = dict(json.load(le))
-        data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
-                                                             'count': 1}
-        data[f'{message.chat.id}']['total_price'] += int(res)
-        data[str(message.chat.id)]['delivery'] = 'sam'
-        with open('users.json', 'w') as lv:
-            json.dump(data, lv)
+def dostavka(message, win):
+    if not win:
+        if message.text == 'Самовывоз':
+            res = requests.get('/api/get_samdelivery').json()['samdelivery']
+            bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
+            with open('users.json') as le:
+                data = dict(json.load(le))
+            data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
+                                                                 'count': 1}
+            data[f'{message.chat.id}']['total_price'] += int(res)
+            data[str(message.chat.id)]['delivery'] = 'sam'
+            with open('users.json', 'w') as lv:
+                json.dump(data, lv)
 
-        pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
-        string = ''
-        for i in pos:
-            string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
-        string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
-        bot.send_message(message.chat.id, string)
-        invalid_dostavka(message)
-    elif message.text == 'Доставка':
-        res = requests.get('/api/get_delivery').json()['delivery']
-        bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
-        with open('users.json') as le:
-            data = dict(json.load(le))
-        data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
-                                                                   'count': 1}
-        data[f'{message.chat.id}']['total_price'] += int(res)
-        data[str(message.chat.id)]['delivery'] = 'nesam'
-        with open('users.json', 'w') as lv:
-            json.dump(data, lv)
+            pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
+            string = ''
+            for i in pos:
+                string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
+            string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
+            bot.send_message(message.chat.id, string)
+            invalid_dostavka(message)
+        elif message.text == 'Доставка':
+            res = requests.get('/api/get_delivery').json()['delivery']
+            bot.send_message(message.chat.id, f'Стоимость самовывоза: {res}.')
+            with open('users.json') as le:
+                data = dict(json.load(le))
+            data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
+                                                                       'count': 1}
+            data[f'{message.chat.id}']['total_price'] += int(res)
+            data[str(message.chat.id)]['delivery'] = 'nesam'
+            with open('users.json', 'w') as lv:
+                json.dump(data, lv)
 
-        pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
-        string = ''
-        for i in pos:
-            string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
-        string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
-        bot.send_message(message.chat.id, string)
-        invalid_dostavka(message)
+            pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
+            string = ''
+            for i in pos:
+                string += f'{i}: {data[str(message.chat.id)]["all_positions"][i]["cost"]} × {data[str(message.chat.id)]["all_positions"][i]["count"]}\n'
+            string += f'Общая стоимость: {data[str(message.chat.id)]["total_price"]}'
+            bot.send_message(message.chat.id, string)
+            invalid_dostavka(message)
 
+        else:
+            basket(message)
     else:
-        basket(message)
+        with open('users.json') as le:
+            data = dict(json.load(le))
+        data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': 'Бесплатно',
+                                                                   'count': 1}
+        if message.text == 'Самовывоз':
+            data[str(message.chat.id)]['delivery'] = 'sam'
+            with open('users.json', 'w') as lv:
+                json.dump(data, lv)
+        elif message.text == 'Доставка':
+            data[str(message.chat.id)]['delivery'] = 'nesam'
+            with open('users.json', 'w') as lv:
+                json.dump(data, lv)
+        else:
+            basket(message)
+
 
 
 markup_invalid = types.ReplyKeyboardMarkup(resize_keyboard=True)
