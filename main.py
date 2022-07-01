@@ -13,21 +13,6 @@ bot = telebot.TeleBot('5340148482:AAFT4YjSp9Ak-NICmbnLQ_SvsYW8wijqm_I')
 
 
 
-def get_level(number):
-    with open('levels.json') as le:
-        data = dict(json.load(le))
-    return data[number][0], data[number][1]
-
-
-def write_level(m, m1):
-    with open('levels.json') as levels:
-        data = dict(json.load(levels))
-        data['4'] = (m, m1)
-    with open('levels.json', 'w') as lv:
-        json.dump(data, lv)
-
-
-
 
 
 
@@ -38,7 +23,8 @@ def start(message, res=False):
         data = dict(json.load(le))
     if not str(message.chat.id) in data.keys():
         data[f'{message.chat.id}'] = {'all_positions': {},
-                                      'total_price': 0}
+                                      'total_price': 0,
+                                      'delivery': ''}
         with open('users.json', 'w') as lv:
             json.dump(data, lv)
 
@@ -369,6 +355,9 @@ def dostavka(message):
         data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
                                                              'count': 1}
         data[f'{message.chat.id}']['total_price'] += int(res)
+        data[str(message.chat.id)]['delivery'] = 'sam'
+        with open('users.json', 'w') as lv:
+            json.dump(data, lv)
 
         pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
         string = ''
@@ -385,6 +374,9 @@ def dostavka(message):
         data[f'{message.chat.id}']['all_positions']['Доставка'] = {'cost': res,
                                                                    'count': 1}
         data[f'{message.chat.id}']['total_price'] += int(res)
+        data[str(message.chat.id)]['delivery'] = 'nesam'
+        with open('users.json', 'w') as lv:
+            json.dump(data, lv)
 
         pos = [x for x in data[str(message.chat.id)]["all_positions"].keys()]
         string = ''
@@ -420,6 +412,7 @@ def buy(chat_id):  #TODO
     with open('users.json') as le:
         data = dict(json.load(le))
     count = data[str(chat_id)]['total_price']     #Это он на сколько денег взял
+    dostavka = data[str(chat_id)]['delivery']     # sam = самовывоз   nesam = не самовывоз   "" = он победил
 
 
 def buy_horosho(chat_id):   # Если оплата прошла
